@@ -3,12 +3,13 @@ import numpy as np
 from einsum import einsum
 
 def test(fmt, *args, dtype=np.int32):
-    expected = np.einsum(fmt, *args)
-    actual = einsum(fmt, *args, dtype=dtype)
+    expected = np.einsum(fmt, *[np.array(a) for a in args])
+    actual = einsum(fmt, *[np.array(a) for a in args], dtype=dtype)
     test_passed = np.allclose(expected, actual)
 
     if not test_passed:
         print("for input: {}".format(fmt))
+
         print("with args:")
         print()
         for arg in args:
@@ -34,8 +35,20 @@ if __name__ == "__main__":
     test('ij->ij', A)
     test('ij->ji', A)
 
-    A = np.array([[1, 1], [2, 2]])
-    test('ij,kl->', A, A)
+    A = np.array([[1, 2, 3], [4, 5, 6]])
+    test('ij,ik->ik', A, A)
+
+    A = np.array([[1, 2], [3, 4]])
+    test('ik,ik,il->', A, A, A)
+
+    A = np.array([[1, 2],
+                  [3, 4]])
+
+    B = np.array([[5, 6],
+                  [7, 8]])
+
+    test('ij,jk->ijk', A, B)
+    test('ij,jk->ik', A, B)
 
     A = np.array([[1, 1, 1],
                   [2, 2, 2],
@@ -47,4 +60,6 @@ if __name__ == "__main__":
 
     test('ij,jk->ijk', A, B)
     test('ij,jk->ik', A, B)
+
+    print("all tests passed")
 
