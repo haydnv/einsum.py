@@ -37,12 +37,8 @@ def einsum(f, *args, dtype=np.int32):
             else:
                 labels[label] = dim
 
-    print("labels", labels)
-
     output_dims = [labels[l] for l in f_output] if f_output else [1]
     output = np.ones(output_dims, dtype)
-
-    print("output dims:", output_dims)
 
     for coord in itertools.product(*[range(labels[l]) for l in f_output]):
         coord = {f_output[i]: coord[i] for i in range(len(f_output))}
@@ -58,7 +54,7 @@ def select_and_assign(coord, f_inputs, inputs, f_output, output):
     value = 1
     for arg in range(len(inputs)):
         selection = select(coord, f_inputs[arg], inputs[arg])
-        value *= selection
+        value = value * selection
 
     output[output_selector] = np.sum(value)
 
@@ -69,39 +65,4 @@ def select(coords, fmt, tensor):
             selector[i] = coords[fmt[i]]
 
     return tensor[tuple(selector)]
-
-if __name__ == "__main__":
-    def test(fmt, *args):
-        expected = np.einsum(fmt, *args)
-        actual = einsum(fmt, *args)
-
-        print("expected")
-        print(expected)
-        print("actual")
-        print(actual)
-
-        assert (expected == actual).all()
-
-        print()
-
-    A = np.array([1, 2, 3])
-    test('i->', A)
-    test('i->i', A)
-
-    A = np.array([[1, 1], [2, 2], [3, 3]])
-    test('ij->i', A)
-    test('ij->j', A)
-    test('ij->ij', A)
-    test('ij->ji', A)
-
-    A = np.array([[1, 1, 1],
-                  [2, 2, 2],
-                  [5, 5, 5]])
-
-    B = np.array([[0, 1, 0],
-                  [1, 1, 0],
-                  [1, 1, 1]])
-
-    test('ij,jk->ijk', A, B)
-    test('ij,jk->ik', A, B)
 
