@@ -82,8 +82,7 @@ def inner_product(dimensions, tensors, f_inputs):
     for coord in itertools.product(*[range(d) for d in dimensions.values()]):
         selector = {labels[i]: coord[i] for i in range(len(labels))}
         for t in range(len(tensors)):
-            value = select(selector, tensors[t], f_inputs[t])
-            inner_product[coord] *= value
+            inner_product[coord] *= select(selector, tensors[t], f_inputs[t])
 
     return inner_product
 

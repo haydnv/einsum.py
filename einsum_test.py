@@ -61,5 +61,9 @@ if __name__ == "__main__":
     test('ij,jk->ijk', A, B)
     test('ij,jk->ik', A, B)
 
+    A = np.arange(60.).reshape(3, 4, 5)
+    B = np.arange(24.).reshape(4, 3, 2)
+    test('ijk,jil->kl', A, B)
+
     print("all tests passed")
 
