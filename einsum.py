@@ -7,13 +7,12 @@ VALID_LABELS = set(list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 
 class OuterProduct(object):
     def __init__(self, tensors, f_inputs):
-        self._num_tensors = len(tensors)
         self._tensors = tensors
         self._f_inputs = f_inputs
 
     def at(self, selector):
         value = 1
-        for t in range(self._num_tensors):
+        for t in range(len(self._tensors)):
             s = tuple(selector.get(l, slice(None)) for l in self._f_inputs[t])
             value *= self._tensors[t][s]
 
@@ -24,12 +23,6 @@ class Contraction(object):
         self._op = op
         self._dimensions = dimensions
         self._f_input = list(dimensions.keys())
-        self._f_output = f_output
-
-        contract_over = OrderedDict()
-        for label, size in dimensions.items():
-            if label not in f_output:
-                contract_over[label] = size
 
     def at(self, selector):
         sources = product(*[
@@ -82,27 +75,12 @@ def einsum(f, *tensors, dtype=np.int32):
     f_inputs, f_output = parse_format(f)
     dimensions = validate_args(tensors, f_inputs)
 
-    labels = list(dimensions.keys())
-
-    if not f_output:
-        output = 0
-        op = OuterProduct(tensors, f_inputs)
-        for coord in product(*[range(d) for d in dimensions.values()]):
-            selector = {labels[i]: coord[i] for i in range(len(dimensions))}
-            output += op.at(selector)
-
-        return output
-
     output = np.zeros([dimensions[l] for l in f_output])
     op = OuterProduct(tensors, f_inputs)
     contraction = Contraction(op, dimensions, f_output)
     for coord in product(*[range(dimensions[l]) for l in f_output]):
         selector = {f_output[i]: coord[i] for i in range(len(f_output))}
         output[coord] = contraction.at(selector)
-    return output
 
-def select(coord, tensor, fmt):
-    assert tensor.ndim == len(fmt)
-    axes = tuple(coord.get(fmt[i], slice(None)) for i in range(tensor.ndim))
-    return tensor[axes]
+    return output
 
