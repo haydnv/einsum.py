@@ -63,8 +63,7 @@ def einsum(f, *args, dtype=np.int32):
     output = np.zeros([dimensions[l] for l in f_output])
     for coord in itertools.product(*[range(dimensions[l]) for l in f_output]):
         selector = {f_output[i]: coord[i] for i in range(len(f_output))}
-        value = select(selector, contracted, f_contracted)
-        output[coord] = np.sum(value)
+        output[coord] = select(selector, contracted, f_contracted)
 
     return output
 
