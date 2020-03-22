@@ -25,36 +25,29 @@ def parse_format(f):
 
     return f_inputs, f_output
 
-def validate_args(args, f_args):
-    labels = {}
-    for arg in range(len(args)):
-        fmt = f_args[arg]
-        assert args[arg].ndim == len(fmt)
-        for i in range(len(fmt)):
-            if fmt[i] in labels:
-                assert labels[fmt[i]] == args[arg].shape[i]
-            else:
-                labels[fmt[i]] = args[arg].shape[i]
-
-def einsum(f, *args, dtype=np.int32):
-    args = list(args)
-    f_inputs, f_output = parse_format(f)
-    assert len(args) == len(f_inputs)
-    validate_args(args, f_inputs)
+def validate_args(tensors, f_inputs):
+    assert len(tensors) == len(f_inputs)
 
     dimensions = OrderedDict()
-    for arg in range(len(args)):
-        for i in range(len(f_inputs[arg])):
-            label = f_inputs[arg][i]
-            dim = args[arg].shape[i]
-            if label in dimensions:
-                assert dimensions[label] == dim
+    for t in range(len(tensors)):
+        fmt = f_inputs[t]
+        assert tensors[t].ndim == len(fmt)
+
+        for i in range(len(fmt)):
+            if fmt[i] in dimensions:
+                assert dimensions[fmt[i]] == tensors[t].shape[i]
             else:
-                dimensions[label] = dim
+                dimensions[fmt[i]] = tensors[t].shape[i]
+
+    return dimensions
+
+def einsum(f, *tensors, dtype=np.int32):
+    f_inputs, f_output = parse_format(f)
+    dimensions = validate_args(tensors, f_inputs)
 
     labels = list(dimensions.keys())
 
-    ip = inner_product(dimensions, args, f_inputs)
+    ip = inner_product(dimensions, tensors, f_inputs)
     contracted, f_contracted = contract(ip, labels, f_output)
 
     if not f_output:

@@ -74,6 +74,7 @@ if __name__ == "__main__":
     test('ijk,jil->il', A, B)
     test('ijk,jil->kj', A, B)
     test('ijk,jil->lkij', A, B)
+    test('ijk,jil->lij', A, B)
 
     print("all tests passed")
 
