@@ -1,9 +1,46 @@
-import itertools
 import numpy as np
 
 from collections import OrderedDict
+from itertools import product
 
 VALID_LABELS = set(list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+
+class OuterProduct(object):
+    def __init__(self, tensors, f_inputs):
+        self._num_tensors = len(tensors)
+        self._tensors = tensors
+        self._f_inputs = f_inputs
+
+    def at(self, selector):
+        value = 1
+        for t in range(self._num_tensors):
+            s = tuple(selector.get(l, slice(None)) for l in self._f_inputs[t])
+            value *= self._tensors[t][s]
+
+        return value
+
+class Contraction(object):
+    def __init__(self, op, dimensions, f_output):
+        self._op = op
+        self._dimensions = dimensions
+        self._f_input = list(dimensions.keys())
+        self._f_output = f_output
+
+        contract_over = OrderedDict()
+        for label, size in dimensions.items():
+            if label not in f_output:
+                contract_over[label] = size
+
+    def at(self, selector):
+        sources = product(*[
+            [selector[l]] if l in selector else range(self._dimensions[l])
+            for l in self._f_input])
+
+        value = 0
+        for coord in sources:
+            value += self._op.at({self._f_input[i]: coord[i] for i in range(len(coord))})
+
+        return value
 
 def parse_format(f):
     if '->' not in f:
@@ -47,43 +84,21 @@ def einsum(f, *tensors, dtype=np.int32):
 
     labels = list(dimensions.keys())
 
-    ip = inner_product(dimensions, tensors, f_inputs)
-    contracted, f_contracted = contract(ip, labels, f_output)
-
     if not f_output:
-        return contracted
+        output = 0
+        op = OuterProduct(tensors, f_inputs)
+        for coord in product(*[range(d) for d in dimensions.values()]):
+            selector = {labels[i]: coord[i] for i in range(len(dimensions))}
+            output += op.at(selector)
+
+        return output
 
     output = np.zeros([dimensions[l] for l in f_output])
-    for coord in itertools.product(*[range(dimensions[l]) for l in f_output]):
+    op = OuterProduct(tensors, f_inputs)
+    contraction = Contraction(op, dimensions, f_output)
+    for coord in product(*[range(dimensions[l]) for l in f_output]):
         selector = {f_output[i]: coord[i] for i in range(len(f_output))}
-        output[coord] = select(selector, contracted, f_contracted)
-
-    return output
-
-def contract(tensor, f_input, f_output):
-    while set(f_input) > set(f_output):
-        for i in range(tensor.ndim):
-            if f_input[i] not in f_output:
-                tensor = tensor.sum(i)
-                del f_input[i]
-                break
-
-    return tensor, f_input
-
-def inner_product(dimensions, tensors, f_inputs):
-    output = np.ones(list(dimensions.values()))
-    f_output = list(dimensions.keys())
-
-    for coord in itertools.product(*[range(d) for d in dimensions.values()]):
-        selector = {f_output[i]: coord[i] for i in range(len(f_output))}
-
-        values = []
-        for t in range(len(tensors)):
-            s = tuple(selector[l] if l in f_output else slice(None) for l in f_inputs[t])
-            values.append(tensors[t][tuple(s)])
-
-        output[coord] = np.product(values)
-
+        output[coord] = contraction.at(selector)
     return output
 
 def select(coord, tensor, fmt):
