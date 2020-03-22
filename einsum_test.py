@@ -48,7 +48,13 @@ if __name__ == "__main__":
                   [7, 8]])
 
     test('ij,jk->ijk', A, B)
+    test('ij,jk->ij', A, B)
     test('ij,jk->ik', A, B)
+    test('ij,jk->jk', A, B)
+    test('ij,jk->i', A, B)
+    test('ij,jk->j', A, B)
+    test('ij,jk->k', A, B)
+    test('ij,jk->', A, B)
 
     A = np.array([[1, 1, 1],
                   [2, 2, 2],
