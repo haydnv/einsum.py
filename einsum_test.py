@@ -36,6 +36,7 @@ if __name__ == "__main__":
     test('ij->ji', A)
 
     A = np.array([[1, 2, 3], [4, 5, 6]])
+    test('ij,ik->', A, A)
     test('ij,ik->ik', A, A)
 
     A = np.array([[1, 2], [3, 4]])
@@ -69,7 +70,10 @@ if __name__ == "__main__":
 
     A = np.arange(60.).reshape(3, 4, 5)
     B = np.arange(24.).reshape(4, 3, 2)
-    test('ijk,jil->kl', A, B)
+    test('ijk,jil->', A, B)
+    test('ijk,jil->il', A, B)
+    test('ijk,jil->kj', A, B)
+    test('ijk,jil->lkij', A, B)
 
     print("all tests passed")
 

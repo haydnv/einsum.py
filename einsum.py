@@ -61,12 +61,10 @@ def einsum(f, *args, dtype=np.int32):
         return contracted
 
     output = np.zeros([dimensions[l] for l in f_output])
-
-    for i in range(output.shape[0]):
-        to_selector = tuple([i] + ([slice(None)] * (output.ndim - 1)))
-        from_selector = [slice(None)] * contracted.ndim
-        from_selector[f_contracted.index(f_output[0])] = i
-        output[to_selector] = contracted[tuple(from_selector)]
+    for coord in itertools.product(*[range(dimensions[l]) for l in f_output]):
+        selector = {f_output[i]: coord[i] for i in range(len(f_output))}
+        value = select(selector, contracted, f_contracted)
+        output[coord] = np.sum(value)
 
     return output
 
@@ -86,8 +84,13 @@ def inner_product(dimensions, tensors, f_inputs):
 
     for coord in itertools.product(*[range(d) for d in dimensions.values()]):
         selector = {f_output[i]: coord[i] for i in range(len(f_output))}
+
+        values = []
         for t in range(len(tensors)):
-            output[coord] *= select(selector, tensors[t], f_inputs[t])
+            s = tuple(selector[l] if l in f_output else slice(None) for l in f_inputs[t])
+            values.append(tensors[t][tuple(s)])
+
+        output[coord] = np.product(values)
 
     return output
 
