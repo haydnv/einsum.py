@@ -2,9 +2,9 @@ import numpy as np
 
 from einsum import einsum
 
-def test(fmt, *args, dtype=np.int32):
+def test(fmt, *args):
     expected = np.einsum(fmt, *[np.array(a) for a in args])
-    actual = einsum(fmt, *[np.array(a) for a in args], dtype=dtype)
+    actual = einsum(fmt, *[np.array(a) for a in args])
     test_passed = np.allclose(expected, actual)
 
     if not test_passed:

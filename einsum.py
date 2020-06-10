@@ -71,7 +71,7 @@ def validate_args(tensors, f_inputs):
 
     return dimensions
 
-def einsum(f, *tensors, dtype=np.int32):
+def einsum(f, *tensors):
     f_inputs, f_output = parse_format(f)
     dimensions = validate_args(tensors, f_inputs)
 
