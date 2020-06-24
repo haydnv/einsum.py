@@ -58,11 +58,11 @@ def outer_product(f_inputs, tensors):
 
     op_labels = list(dimensions.keys())
     op = np.ones(list(dimensions.values()))
-    for i in range(len(tensors)):
-        for coord in product(*[range(d) for d in dimensions.values()]):
-            selector = dict(zip(op_labels, coord))
-            selector = tuple(selector[l] for l in f_inputs[i])
-            op[coord] *= tensors[i][selector]
+    for coord in product(*[range(d) for d in dimensions.values()]):
+        selector = dict(zip(op_labels, coord))
+        op[coord] = np.product(list(
+            tensors[i][tuple(selector[l] for l in f_inputs[i])]
+            for i in range(len(tensors))))
 
     return op
 
