@@ -7,20 +7,6 @@ from itertools import product
 VALID_LABELS = set(list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 
 
-class LabeledTensor(object):
-    def __init__(self, labels, tensor):
-        assert len(labels) == tensor.ndim
-        self.labels = labels
-        self.tensor = tensor
-
-    def __getitem__(self, coord):
-        if len(coord) == 1 and list(coord.keys())[0] == self.labels[0]:
-            return self.tensor[list(coord.values())[0]]
-        else:
-            axis_coord = tuple(coord[l] if l in coord else slice(None) for l in self.labels)
-            return self.tensor[axis_coord]
-
-
 def parse_format(f):
     if '->' not in f:
         raise ValueError
@@ -64,21 +50,21 @@ def validate_args(f_inputs, tensors):
 def outer_product(f_inputs, tensors):
     assert len(f_inputs) == len(tensors)
 
-    tensors = [LabeledTensor(f_inputs[i], tensors[i]) for i in range(len(tensors))]
     dimensions = OrderedDict()
-    for t in tensors:
-        for l, d in zip(t.labels, t.tensor.shape):
+    for i in range(len(tensors)):
+        for l, d in zip(f_inputs[i], tensors[i].shape):
             if l not in dimensions:
                 dimensions[l] = d
 
     op_labels = list(dimensions.keys())
     op = np.ones(list(dimensions.values()))
-    for coord in product(*[range(d) for d in dimensions.values()]):
-        for t in tensors:
-            selector = {op_labels[i]: coord[i] for i in range(len(op_labels))}
-            op[coord] *= t[selector]
+    for i in range(len(tensors)):
+        for coord in product(*[range(d) for d in dimensions.values()]):
+            selector = dict(zip(op_labels, coord))
+            selector = tuple(selector[l] for l in f_inputs[i])
+            op[coord] *= tensors[i][selector]
 
-    return LabeledTensor(op_labels, op)
+    return op
 
 
 def contract(op, dimensions, f_output):
@@ -89,7 +75,7 @@ def contract(op, dimensions, f_output):
     for coord in product(*[range(dimensions[l]) for l in axes]):
         selector = dict((axes[i], coord[i]) for i in range(len(axes)))
         axis = tuple(selector[l] if l in selector else slice(None) for l in f_input)
-        contraction[coord] = np.sum(op.tensor[axis])
+        contraction[coord] = np.sum(op[axis])
 
     return contraction
 
