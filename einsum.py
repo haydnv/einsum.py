@@ -63,15 +63,22 @@ def outer_product(f_inputs, dimensions, tensors):
 
 def contract(op, dimensions, f_output):
     f_input = list(dimensions.keys())
-    axes = [l for l in f_output]
-    contraction = np.zeros([dimensions[l] for l in axes])
+    axis = 0
+    while op.ndim > len(f_output):
+        assert len(f_input) == op.ndim
+        if f_input[axis] not in f_output:
+            op = np.sum(op, axis)
+            del f_input[axis]
+            axis = 0
+        else:
+            axis += 1
 
-    for coord in product(*[range(dimensions[l]) for l in axes]):
-        selector = dict((axes[i], coord[i]) for i in range(len(axes)))
-        axis = tuple(selector[l] if l in selector else slice(None) for l in f_input)
-        contraction[coord] = np.sum(op[axis])
-
-    return contraction
+    if f_input == f_output:
+        return op
+    else:
+        source = dict(zip(f_input, range(len(f_input))))
+        permutation = [source[l] for l in f_output]
+        return np.transpose(op, permutation)
 
 
 def einsum(f, *tensors):
