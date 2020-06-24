@@ -76,5 +76,14 @@ if __name__ == "__main__":
     test('ijk,jil->lkij', A, B)
     test('ijk,jil->lij', A, B)
 
+    for _ in range(10):
+        A = (np.random.random([10, 10]) * 3).astype(np.int32)
+        test("ii->i", A)
+
+        B = (np.random.random([10, 10]) * 2).astype(np.int32)
+
+        test("ij,jk->ik", A, B)
+        test("ij,jk->ki", A, B)
+
     print("all tests passed")
 

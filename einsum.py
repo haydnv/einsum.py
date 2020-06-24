@@ -3,7 +3,9 @@ import numpy as np
 from collections import OrderedDict
 from itertools import product
 
+
 VALID_LABELS = set(list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+
 
 class OuterProduct(object):
     def __init__(self, tensors, f_inputs):
@@ -13,27 +15,34 @@ class OuterProduct(object):
     def at(self, selector):
         value = 1
         for t in range(len(self._tensors)):
-            s = tuple(selector.get(l, slice(None)) for l in self._f_inputs[t])
-            value *= self._tensors[t][s]
+            coord = tuple(selector[l] for l in self._f_inputs[t])
+            value *= self._tensors[t][coord]
+            if not value:
+                return value
 
         return value
 
-class Contraction(object):
-    def __init__(self, op, dimensions, f_output):
-        self._op = op
-        self._dimensions = dimensions
-        self._f_input = list(dimensions.keys())
 
-    def at(self, selector):
-        sources = product(*[
-            [selector[l]] if l in selector else range(self._dimensions[l])
-            for l in self._f_input])
+def contract(op, dimensions, axes):
+    f_input = list(dimensions.keys())
+    contraction = np.zeros([dimensions[l] for l in axes])
+
+    for coord in product(*[range(dimensions[l]) for l in axes]):
+        selector = dict((axes[i], coord[i]) for i in range(len(axes)))
+        sources = [
+            [selector[l]] if l in selector else range(dimensions[l])
+            for l in f_input]
+        sources = product(*sources)
 
         value = 0
-        for coord in sources:
-            value += self._op.at({self._f_input[i]: coord[i] for i in range(len(coord))})
+        for source_coord in sources:
+            op_coord = {f_input[i]: source_coord[i] for i in range(len(source_coord))}
+            value += op.at(op_coord)
 
-        return value
+        contraction[coord] = value
+
+    return contraction
+
 
 def parse_format(f):
     if '->' not in f:
@@ -55,6 +64,7 @@ def parse_format(f):
 
     return f_inputs, f_output
 
+
 def validate_args(tensors, f_inputs):
     assert len(tensors) == len(f_inputs)
 
@@ -71,16 +81,12 @@ def validate_args(tensors, f_inputs):
 
     return dimensions
 
+
 def einsum(f, *tensors):
     f_inputs, f_output = parse_format(f)
     dimensions = validate_args(tensors, f_inputs)
 
-    output = np.zeros([dimensions[l] for l in f_output])
     op = OuterProduct(tensors, f_inputs)
-    contraction = Contraction(op, dimensions, f_output)
-    for coord in product(*[range(dimensions[l]) for l in f_output]):
-        selector = {f_output[i]: coord[i] for i in range(len(f_output))}
-        output[coord] = contraction.at(selector)
-
-    return output
+    axes = [l for l in f_output]
+    return contract(op, dimensions, axes)
 
