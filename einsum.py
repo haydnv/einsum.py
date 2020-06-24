@@ -7,41 +7,18 @@ from itertools import product
 VALID_LABELS = set(list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 
 
-class OuterProduct(object):
-    def __init__(self, tensors, f_inputs):
-        self._tensors = tensors
-        self._f_inputs = f_inputs
+class LabeledTensor(object):
+    def __init__(self, labels, tensor):
+        assert len(labels) == tensor.ndim
+        self.labels = labels
+        self.tensor = tensor
 
-    def at(self, selector):
-        value = 1
-        for t in range(len(self._tensors)):
-            coord = tuple(selector[l] for l in self._f_inputs[t])
-            value *= self._tensors[t][coord]
-            if not value:
-                return value
-
-        return value
-
-
-def contract(op, dimensions, axes):
-    f_input = list(dimensions.keys())
-    contraction = np.zeros([dimensions[l] for l in axes])
-
-    for coord in product(*[range(dimensions[l]) for l in axes]):
-        selector = dict((axes[i], coord[i]) for i in range(len(axes)))
-        sources = [
-            [selector[l]] if l in selector else range(dimensions[l])
-            for l in f_input]
-        sources = product(*sources)
-
-        value = 0
-        for source_coord in sources:
-            op_coord = {f_input[i]: source_coord[i] for i in range(len(source_coord))}
-            value += op.at(op_coord)
-
-        contraction[coord] = value
-
-    return contraction
+    def __getitem__(self, coord):
+        if len(coord) == 1 and list(coord.keys())[0] == self.labels[0]:
+            return self.tensor[list(coord.values())[0]]
+        else:
+            axis_coord = tuple(coord[l] if l in coord else slice(None) for l in self.labels)
+            return self.tensor[axis_coord]
 
 
 def parse_format(f):
@@ -65,7 +42,7 @@ def parse_format(f):
     return f_inputs, f_output
 
 
-def validate_args(tensors, f_inputs):
+def validate_args(f_inputs, tensors):
     assert len(tensors) == len(f_inputs)
 
     dimensions = OrderedDict()
@@ -82,11 +59,54 @@ def validate_args(tensors, f_inputs):
     return dimensions
 
 
+def outer_product(f_inputs, tensors):
+    assert len(f_inputs) == len(tensors)
+
+    tensors = [LabeledTensor(f_inputs[i], tensors[i]) for i in range(len(tensors))]
+    dimensions = OrderedDict()
+    for t in tensors:
+        for l, d in zip(t.labels, t.tensor.shape):
+            if l not in dimensions:
+                dimensions[l] = d
+
+    op_labels = list(dimensions.keys())
+    op = np.ones(list(dimensions.values()))
+    for coord in product(*[range(d) for d in dimensions.values()]):
+        for t in tensors:
+            selector = {
+                op_labels[i]: coord[i] if op_labels[i] in t.labels else slice(None)
+                for i in range(len(op_labels))}
+            op[coord] *= t[selector]
+
+    return LabeledTensor(op_labels, op)
+
+
+def contract(op, dimensions, f_output):
+    f_input = list(dimensions.keys())
+    axes = [l for l in f_output]
+    contraction = np.zeros([dimensions[l] for l in axes])
+
+    for coord in product(*[range(dimensions[l]) for l in axes]):
+        selector = dict((axes[i], coord[i]) for i in range(len(axes)))
+        sources = [
+            [selector[l]] if l in selector else range(dimensions[l])
+            for l in f_input]
+
+        value = 0
+        for source_coord in product(*sources):
+            op_coord = {f_input[i]: source_coord[i] for i in range(len(source_coord))}
+            value += op[op_coord]
+
+        contraction[coord] = value
+
+    return contraction
+
+
 def einsum(f, *tensors):
     f_inputs, f_output = parse_format(f)
-    dimensions = validate_args(tensors, f_inputs)
+    dimensions = validate_args(f_inputs, tensors)
 
-    op = OuterProduct(tensors, f_inputs)
-    axes = [l for l in f_output]
-    return contract(op, dimensions, axes)
+    op = outer_product(f_inputs, tensors)
+    contraction = contract(op, dimensions, f_output)
+    return contraction
 
