@@ -21,7 +21,7 @@ def test(fmt, *args):
         print("actual")
         print(actual)
         print()
-
+    
     assert test_passed
 
 if __name__ == "__main__":
@@ -78,8 +78,7 @@ if __name__ == "__main__":
 
     for _ in range(10):
         A = (np.random.random([10, 10]) * 3).astype(np.int32)
-        # TODO: handle the case of a repeated index in a single tensor
-#        test("ii->i", A)
+        test("ij->i", A)
 
         B = (np.random.random([10, 10]) * 2).astype(np.int32)
 

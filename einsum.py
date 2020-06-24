@@ -38,6 +38,8 @@ def parse_format(f):
     for f_input in f_inputs:
         if set(f_input) > VALID_LABELS:
             raise ValueError
+        elif len(set(f_input)) < len(f_input):
+            raise ValueError("duplicate label {}".format(f_input))
 
     return f_inputs, f_output
 
@@ -73,9 +75,7 @@ def outer_product(f_inputs, tensors):
     op = np.ones(list(dimensions.values()))
     for coord in product(*[range(d) for d in dimensions.values()]):
         for t in tensors:
-            selector = {
-                op_labels[i]: coord[i] if op_labels[i] in t.labels else slice(None)
-                for i in range(len(op_labels))}
+            selector = {op_labels[i]: coord[i] for i in range(len(op_labels))}
             op[coord] *= t[selector]
 
     return LabeledTensor(op_labels, op)
