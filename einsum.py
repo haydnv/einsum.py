@@ -47,14 +47,8 @@ def validate_args(f_inputs, tensors):
     return dimensions
 
 
-def outer_product(f_inputs, tensors):
+def outer_product(f_inputs, dimensions, tensors):
     assert len(f_inputs) == len(tensors)
-
-    dimensions = OrderedDict()
-    for i in range(len(tensors)):
-        for l, d in zip(f_inputs[i], tensors[i].shape):
-            if l not in dimensions:
-                dimensions[l] = d
 
     op_labels = list(dimensions.keys())
     op = np.ones(list(dimensions.values()))
@@ -84,7 +78,7 @@ def einsum(f, *tensors):
     f_inputs, f_output = parse_format(f)
     dimensions = validate_args(f_inputs, tensors)
 
-    op = outer_product(f_inputs, tensors)
+    op = outer_product(f_inputs, dimensions, tensors)
     contraction = contract(op, dimensions, f_output)
     return contraction
 
