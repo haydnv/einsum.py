@@ -88,16 +88,8 @@ def contract(op, dimensions, f_output):
 
     for coord in product(*[range(dimensions[l]) for l in axes]):
         selector = dict((axes[i], coord[i]) for i in range(len(axes)))
-        sources = [
-            [selector[l]] if l in selector else range(dimensions[l])
-            for l in f_input]
-
-        value = 0
-        for source_coord in product(*sources):
-            op_coord = {f_input[i]: source_coord[i] for i in range(len(source_coord))}
-            value += op[op_coord]
-
-        contraction[coord] = value
+        axis = tuple(selector[l] if l in selector else slice(None) for l in f_input)
+        contraction[coord] = np.sum(op.tensor[axis])
 
     return contraction
 
