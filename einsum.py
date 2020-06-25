@@ -48,15 +48,33 @@ def validate_args(f_inputs, tensors):
 
 
 def outer_product(f_inputs, dimensions, tensors):
+    tensors = list(tensors)
     assert len(f_inputs) == len(tensors)
+    f_output = list(dimensions.keys())
 
-    op_labels = list(dimensions.keys())
     op = np.ones(list(dimensions.values()))
-    for coord in product(*[range(d) for d in dimensions.values()]):
-        selector = dict(zip(op_labels, coord))
-        op[coord] = np.product(list(
-            tensors[i][tuple(selector[l] for l in f_inputs[i])]
-            for i in range(len(tensors))))
+    while tensors:
+        tensor = tensors.pop()
+        labels = f_inputs.pop()
+
+        if labels == f_output:
+            op *= tensor
+            continue
+
+        source = dict(zip(labels, range(len(labels))))
+        permutation = [source[l] for l in f_output if l in labels]
+        labels = [labels[axis] for axis in permutation]
+        tensor = np.transpose(tensor, permutation)
+
+        i = 0
+        while i < op.ndim:
+            if i == len(labels) or labels[i] != f_output[i]:
+                tensor = np.expand_dims(tensor, i)
+                labels.insert(i, f_output[i])
+            else:
+                i += 1
+
+        op *= tensor
 
     return op
 
@@ -69,7 +87,6 @@ def contract(op, dimensions, f_output):
         if f_input[axis] not in f_output:
             op = np.sum(op, axis)
             del f_input[axis]
-            axis = 0
         else:
             axis += 1
 
