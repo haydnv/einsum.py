@@ -1,11 +1,21 @@
+import itertools
 import numpy as np
 
 from einsum import einsum
+from tensor.sparse import SparseTensor
+
+
+def to_sparse(tensor):
+    sparse = SparseTensor(tensor.shape)
+    for coord in itertools.product(*[range(x) for x in tensor.shape]):
+        sparse[coord] = tensor[coord]
+    return sparse
+
 
 def test(fmt, *args):
     expected = np.einsum(fmt, *[np.array(a) for a in args])
-    actual = einsum(fmt, *[np.array(a) for a in args])
-    test_passed = np.allclose(expected, actual)
+    actual = einsum(fmt, *[to_sparse(a) for a in args])
+    test_passed = np.allclose(expected, actual.to_dense())
 
     if not test_passed:
         print("for input: {}".format(fmt))
@@ -21,8 +31,11 @@ def test(fmt, *args):
         print("actual")
         print(actual)
         print()
+    else:
+        print("...pass")
     
     assert test_passed
+
 
 if __name__ == "__main__":
     A = np.array([1, 2, 3])
@@ -35,9 +48,14 @@ if __name__ == "__main__":
     test('ij->ij', A)
     test('ij->ji', A)
 
+    A = np.array([[0, 1]])
+    test('ij,ik->ijk', A, A)
+
     A = np.array([[1, 2, 3], [4, 5, 6]])
-    test('ij,ik->', A, A)
+    test('ij,ik->ijk', A, A)
     test('ij,ik->ik', A, A)
+    test('ij,ik->ij', A, A)
+    test('ij,ik->', A, A)
 
     A = np.array([[1, 2], [3, 4]])
     test('ik,ik,il->', A, A, A)

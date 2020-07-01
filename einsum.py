@@ -47,6 +47,20 @@ def validate_args(f_inputs, tensors):
     return dimensions
 
 
+def expand_dims(tensor, axis):
+    if isinstance(tensor, np.ndarray):
+        return np.expand_dims(tensor, axis)
+    else:
+        return tensor.expand_dims(axis)
+
+
+def transpose(tensor, permutation):
+    if isinstance(tensor, np.ndarray):
+        return np.transpose(tensor, permutation)
+    else:
+        return tensor.transpose(permutation)
+
+
 def outer_product(f_inputs, dimensions, tensors):
     tensors = list(tensors)
     assert len(f_inputs) == len(tensors)
@@ -65,12 +79,12 @@ def outer_product(f_inputs, dimensions, tensors):
         source = dict(zip(labels, range(len(labels))))
         permutation = [source[l] for l in f_output if l in labels]
         labels = [labels[axis] for axis in permutation]
-        tensor = np.transpose(tensor, permutation)
+        tensor = transpose(tensor, permutation)
 
         i = 0
         while i < len(dimensions):
             if i == len(labels) or labels[i] != f_output[i]:
-                tensor = np.expand_dims(tensor, i)
+                tensor = expand_dims(tensor, i)
                 labels.insert(i, f_output[i])
             else:
                 i += 1
@@ -90,7 +104,7 @@ def contract(op, dimensions, f_output):
     while op.ndim > len(f_output):
         assert len(f_input) == op.ndim
         if f_input[axis] not in f_output:
-            op = np.sum(op, axis)
+            op = op.sum(axis)
             del f_input[axis]
         else:
             axis += 1
@@ -100,7 +114,7 @@ def contract(op, dimensions, f_output):
     else:
         source = dict(zip(f_input, range(len(f_input))))
         permutation = [source[l] for l in f_output]
-        return np.transpose(op, permutation)
+        return transpose(op, permutation)
 
 
 def einsum(f, *tensors):
@@ -108,6 +122,7 @@ def einsum(f, *tensors):
     dimensions = validate_args(f_inputs, tensors)
 
     op = outer_product(f_inputs, dimensions, tensors)
+    assert op.shape == tuple(dimensions.values())
     contraction = contract(op, dimensions, f_output)
     return contraction
 
