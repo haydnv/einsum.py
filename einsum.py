@@ -2,7 +2,6 @@ import numpy as np
 
 from collections import OrderedDict
 from itertools import product
-from tensor.base import Tensor
 
 
 VALID_LABELS = set(list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
@@ -48,52 +47,39 @@ def validate_args(f_inputs, tensors):
     return dimensions
 
 
-def expand_dims(tensor, axis):
-    if isinstance(tensor, Tensor):
-        return tensor.expand_dims(axis)
-    elif isinstance(tensor, np.ndarray):
-        return np.expand_dims(tensor, axis)
-    else:
-        raise ValueError
-
-
-def transpose(tensor, permutation):
-    if isinstance(tensor, Tensor):
-        return tensor.transpose(permutation)
-    elif isinstance(tensor, np.ndarray):
-        return np.transpose(tensor, permutation)
-    else:
-        raise ValueError
-
-
 def outer_product(f_inputs, dimensions, tensors):
     tensors = list(tensors)
     assert len(f_inputs) == len(tensors)
     f_output = list(dimensions.keys())
 
-    op = np.ones(list(dimensions.values()))
+    normalized = []
+
     while tensors:
         tensor = tensors.pop()
         labels = f_inputs.pop()
 
         if labels == f_output:
-            op *= tensor
+            normalized.append(tensor)
             continue
 
         source = dict(zip(labels, range(len(labels))))
         permutation = [source[l] for l in f_output if l in labels]
         labels = [labels[axis] for axis in permutation]
-        tensor = transpose(tensor, permutation)
+        tensor = np.transpose(tensor, permutation)
 
         i = 0
-        while i < op.ndim:
+        while i < len(dimensions):
             if i == len(labels) or labels[i] != f_output[i]:
-                tensor = expand_dims(tensor, i)
+                tensor = np.expand_dims(tensor, i)
                 labels.insert(i, f_output[i])
             else:
                 i += 1
 
-        op *= tensor
+        normalized.append(tensor)
+
+    op = normalized.pop()
+    while normalized:
+        op = op * normalized.pop()
 
     return op
 
@@ -104,7 +90,7 @@ def contract(op, dimensions, f_output):
     while op.ndim > len(f_output):
         assert len(f_input) == op.ndim
         if f_input[axis] not in f_output:
-            op = op.sum(axis)
+            op = np.sum(op, axis)
             del f_input[axis]
         else:
             axis += 1
@@ -114,7 +100,7 @@ def contract(op, dimensions, f_output):
     else:
         source = dict(zip(f_input, range(len(f_input))))
         permutation = [source[l] for l in f_output]
-        return transpose(op, permutation)
+        return np.transpose(op, permutation)
 
 
 def einsum(f, *tensors):
