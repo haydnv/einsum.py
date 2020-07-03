@@ -93,7 +93,8 @@ def outer_product(f_inputs, dimensions, tensors):
 
     op = normalized.pop()
     while normalized:
-        op = op * normalized.pop()
+        tensor = normalized.pop()
+        op = op * tensor
 
     return op
 

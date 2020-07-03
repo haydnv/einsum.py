@@ -2,6 +2,7 @@ import itertools
 import numpy as np
 
 from einsum import einsum
+from tensor.dense import BlockTensor
 from tensor.sparse import SparseTensor
 
 
@@ -12,10 +13,23 @@ def to_sparse(tensor):
     return sparse
 
 
+def to_dense(tensor):
+    dense = BlockTensor(tensor.shape)
+    for coord in itertools.product(*[range(x) for x in tensor.shape]):
+        dense[coord] = tensor[coord]
+    return dense
+    
+
 def test(fmt, *args):
     expected = np.einsum(fmt, *[np.array(a) for a in args])
-    actual = einsum(fmt, *[to_sparse(a) for a in args])
-    test_passed = np.allclose(expected, actual.to_dense())
+    actual_sparse = einsum(fmt, *[to_sparse(a) for a in args])
+    actual_dense = einsum(fmt, *[to_dense(a) for a in args])
+    test_passed = np.allclose(expected, actual_sparse.to_nparray())
+
+    if actual_dense.shape == tuple():
+        test_passed = test_passed and np.allclose(expected, actual_dense)
+    else:
+        test_passed = test_passed and np.allclose(expected, actual_dense.to_nparray())
 
     if not test_passed:
         print("for input: {}".format(fmt))
