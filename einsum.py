@@ -100,6 +100,9 @@ def outer_product(f_inputs, dimensions, tensors):
 
 
 def contract(op, dimensions, f_output):
+    if not f_output:
+        return op.sum()
+
     f_input = list(dimensions.keys())
     axis = 0
     while op.ndim > len(f_output):

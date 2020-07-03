@@ -24,7 +24,11 @@ def test(fmt, *args):
     expected = np.einsum(fmt, *[np.array(a) for a in args])
     actual_sparse = einsum(fmt, *[to_sparse(a) for a in args])
     actual_dense = einsum(fmt, *[to_dense(a) for a in args])
-    test_passed = np.allclose(expected, actual_sparse.to_nparray())
+
+    if actual_sparse.shape == tuple():
+        test_passed = np.allclose(expected, actual_sparse)
+    else:
+        test_passed = np.allclose(expected, actual_sparse.to_nparray())
 
     if actual_dense.shape == tuple():
         test_passed = test_passed and np.allclose(expected, actual_dense)
@@ -42,8 +46,10 @@ def test(fmt, *args):
 
         print("expected")
         print(expected)
-        print("actual")
-        print(actual)
+        print("actual sparse")
+        print(actual_sparse)
+        print("actual dense")
+        print(actual_dense)
         print()
     else:
         print("...pass")
@@ -57,13 +63,15 @@ if __name__ == "__main__":
     test('i->i', A)
 
     A = np.array([[1, 1], [2, 2], [3, 3]])
+    test('ij->', A)
     test('ij->i', A)
     test('ij->j', A)
     test('ij->ij', A)
     test('ij->ji', A)
 
-    A = np.array([[0, 1]])
+    A = np.array([[0, 1], [1, 2], [2, 3]])
     test('ij,ik->ijk', A, A)
+    test('ij,ik->', A, A)
 
     A = np.array([[1, 2, 3], [4, 5, 6]])
     test('ij,ik->ijk', A, A)
