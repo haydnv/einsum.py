@@ -2,7 +2,7 @@ import itertools
 import numpy as np
 
 from einsum import einsum
-from tensor.dense import BlockTensor
+from tensor.dense import DenseTensor
 from tensor.sparse import SparseTensor
 
 
@@ -14,11 +14,11 @@ def to_sparse(tensor):
 
 
 def to_dense(tensor):
-    dense = BlockTensor(tensor.shape)
+    dense = DenseTensor(tensor.shape)
     for coord in itertools.product(*[range(x) for x in tensor.shape]):
         dense[coord] = tensor[coord]
     return dense
-    
+
 
 def test(fmt, *args):
     expected = np.einsum(fmt, *[np.array(a) for a in args])
@@ -88,6 +88,7 @@ if __name__ == "__main__":
     B = np.array([[5, 6],
                   [7, 8]])
 
+    test('ji,jk->ik', A, B) # = matmul(transpose(A), B)
     test('ij,jk->ijk', A, B)
     test('ij,jk->ij', A, B)
     test('ij,jk->ik', A, B)
